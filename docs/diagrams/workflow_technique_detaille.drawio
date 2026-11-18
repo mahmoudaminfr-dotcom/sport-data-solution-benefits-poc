@@ -1,0 +1,268 @@
+<mxfile host="app.diagrams.net" version="24.7.17" type="device">
+  <diagram id="sds-tech-workflow" name="Workflow Technique et Portes de Tests - Sport Data Solution">
+    <mxGraphModel dx="1940" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1940" pageHeight="1300" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="banner" value="&lt;b&gt;Sport Data Solution — Logigramme Technique Complet du Workflow, des Règles Métier et des Portes de Tests&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:12px;color:#CBD5E1;'&gt;Référence d'ingénierie : flux bout-en-bout, cloisonnement RGPD, tests unitaires Pytest, filtre géospatial Google Maps, coupe-circuit CDC Slack et contrats Soda Core&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F172A;fontColor=#FFFFFF;strokeColor=#0F172A;fontSize=15;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="30" y="15" width="1880" height="58" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane1" value="1. Configuration &amp;amp; Pytest" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;startSize=46;fillColor=#334155;fontColor=#FFFFFF;strokeColor=#334155;swimlaneFillColor=#F8FAFC;fontSize=12;fontStyle=1;rounded=1;arcSize=3;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="95" width="1880" height="186" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane2" value="2. Ingestion S3 &amp;amp; Maps" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;startSize=46;fillColor=#1E40AF;fontColor=#FFFFFF;strokeColor=#1E40AF;swimlaneFillColor=#EFF6FF;fontSize=12;fontStyle=1;rounded=1;arcSize=3;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="312" width="1880" height="216" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane3" value="3. OLTP, CDC &amp;amp; Slack" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;startSize=46;fillColor=#0F766E;fontColor=#FFFFFF;strokeColor=#0F766E;swimlaneFillColor=#F0FDFA;fontSize=12;fontStyle=1;rounded=1;arcSize=3;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="560" width="1880" height="216" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane4" value="4. Lakehouse &amp;amp; Soda Core" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;startSize=46;fillColor=#4338CA;fontColor=#FFFFFF;strokeColor=#4338CA;swimlaneFillColor=#EEF2FF;fontSize=12;fontStyle=1;rounded=1;arcSize=3;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="808" width="1880" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane5" value="5. Kestra, Ops &amp;amp; Power BI" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;startSize=46;fillColor=#7C2D12;fontColor=#FFFFFF;strokeColor=#7C2D12;swimlaneFillColor=#FFF7ED;fontSize=12;fontStyle=1;rounded=1;arcSize=3;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1060" width="1880" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="d1_cfg" value="&lt;b&gt;Paramètres &amp;amp; Secrets&lt;/b&gt;&lt;br&gt;&lt;i&gt;config/business_rules.yaml&lt;/i&gt;&lt;br&gt;Prime = 5 % | Plafonds 15 / 25 km&lt;br&gt;Bien-être = 5 j (&amp;gt;= 15 act./an)&lt;br&gt;&lt;i&gt;.env&lt;/i&gt; (Clés API, Rôles SQL, Salt)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontColor=#0F172A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane1">
+          <mxGeometry x="70" y="30" width="270" height="126" as="geometry"/>
+        </mxCell>
+        <mxCell id="d1_pyd" value="&lt;b&gt;Validation Typée Pydantic&lt;/b&gt;&lt;br&gt;&lt;i&gt;src/settings.py&lt;/i&gt;&lt;br&gt;Contrôle des bornes de taux,&lt;br&gt;disjonction sports avec/sans dist.,&lt;br&gt;mapping &lt;i&gt;Runing -&amp;gt; Course à pied&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontColor=#1E3A8A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane1">
+          <mxGeometry x="400" y="30" width="290" height="126" as="geometry"/>
+        </mxCell>
+        <mxCell id="d1_gate1" value="&lt;b&gt;[PORTE DE TEST 1 — Suite Pytest Offline]&lt;/b&gt;&lt;br&gt;- &lt;i&gt;test_settings.py&lt;/i&gt; : intégrité YAML &amp;amp; schémas Pydantic&lt;br&gt;- &lt;i&gt;test_gmaps_validator.py&lt;/i&gt; : seuils 15/25 km &amp;amp; cache mocké&lt;br&gt;- &lt;i&gt;test_activity_generator.py&lt;/i&gt; : NULL hors sports distance&lt;br&gt;- &lt;i&gt;test_slack_formatter.py&lt;/i&gt; : gabarits Slack avec/sans comm." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=11;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="lane1">
+          <mxGeometry x="755" y="25" width="440" height="136" as="geometry"/>
+        </mxCell>
+        <mxCell id="d1_ok" value="&lt;b&gt;Validation Pré-Exécution&lt;/b&gt;&lt;br&gt;Autorisation de lancement des&lt;br&gt;modules d'ingestion, streaming&lt;br&gt;CDC et calcul Lakehouse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontColor=#14532D;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane1">
+          <mxGeometry x="1270" y="35" width="246" height="116" as="geometry"/>
+        </mxCell>
+        <mxCell id="d1_rgpd" value="&lt;b&gt;Gouvernance RGPD Native&lt;/b&gt;&lt;br&gt;&lt;i&gt;.gitignore&lt;/i&gt; bloque *.xlsx &amp;amp; .env&lt;br&gt;3 rôles PostgreSQL dédiés :&lt;br&gt;&lt;i&gt;pipeline / debezium / bi_reader&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#DC2626;fontColor=#7F1D1D;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane1">
+          <mxGeometry x="1565" y="35" width="275" height="116" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2_xlsx" value="&lt;b&gt;Fichiers Sources Excel&lt;/b&gt;&lt;br&gt;- Données RH.xlsx (161 lignes)&lt;br&gt;- Données Sportive.xlsx (161 ID)&lt;br&gt;Jointure 1:1 intégrale vérifiée" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontColor=#0F172A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane2">
+          <mxGeometry x="70" y="45" width="236" height="126" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2_s3raw" value="&lt;b&gt;MinIO S3 (Raw)&lt;/b&gt;&lt;br&gt;Bucket sécurisé :&lt;br&gt;&lt;i&gt;sds-raw-referentials&lt;/i&gt;&lt;br&gt;(&lt;i&gt;minio_loader.py&lt;/i&gt;)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#DBEAFE;strokeColor=#1D4ED8;fontColor=#0F172A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane2">
+          <mxGeometry x="356" y="45" width="200" height="126" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2_maps" value="&lt;b&gt;Client API Google Maps + Cache&lt;/b&gt;&lt;br&gt;&lt;i&gt;gmaps_validator.py&lt;/i&gt;&lt;br&gt;Audit des 68 déclarations actives vers&lt;br&gt;&lt;i&gt;1362 Av. des Platanes, 34970 Lattes&lt;/i&gt;&lt;br&gt;(14 Marche/running | 54 Vélo/Trott.)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontColor=#1E3A8A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane2">
+          <mxGeometry x="616" y="40" width="296" height="136" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2_gate2" value="&lt;b&gt;[PORTE TEST 2]&lt;/b&gt;&lt;br&gt;Distance Maps&lt;br&gt;&amp;lt;= 15 km / 25 km ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=10.5;strokeWidth=2;" vertex="1" parent="lane2">
+          <mxGeometry x="966" y="33" width="200" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2_valid" value="&lt;b&gt;Déclarations Conformes&lt;/b&gt;&lt;br&gt;&lt;i&gt;is_mobility_bonus_eligible = TRUE&lt;/i&gt;&lt;br&gt;Retenues pour la Prime 5 %" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontColor=#14532D;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane2">
+          <mxGeometry x="1236" y="26" width="280" height="78" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2_anom" value="&lt;b&gt;Quarantaine &amp;amp; Audit RH&lt;/b&gt;&lt;br&gt;&lt;i&gt;is_commute_anomaly = TRUE&lt;/i&gt;&lt;br&gt;Isolé dans &lt;i&gt;hr_restricted&lt;/i&gt; &amp;amp; exclu du coût" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEE2E2;strokeColor=#DC2626;fontColor=#7F1D1D;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane2">
+          <mxGeometry x="1236" y="118" width="280" height="78" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2_passive" value="&lt;b&gt;93 Modes Non-Sportifs&lt;/b&gt;&lt;br&gt;Véhicule (73) | Transports (20)&lt;br&gt;0 appel API Google Maps&lt;br&gt;Éligibilité Prime = FALSE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#334155;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane2">
+          <mxGeometry x="1556" y="45" width="256" height="126" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3_gen" value="&lt;b&gt;Sources d'Activités (12 mois &amp;amp; Live)&lt;/b&gt;&lt;br&gt;- &lt;i&gt;activity_generator.py&lt;/i&gt; (~3 500 lignes,&lt;br&gt;&amp;nbsp;&amp;nbsp;tag &lt;i&gt;historical_seed&lt;/i&gt;, NULL escalade...)&lt;br&gt;- &lt;i&gt;inject_live_activity.py&lt;/i&gt; (tag &lt;i&gt;live_event&lt;/i&gt;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#475569;fontColor=#0F172A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane3">
+          <mxGeometry x="70" y="43" width="280" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3_pg" value="&lt;b&gt;PostgreSQL 16 (WAL Logique)&lt;/b&gt;&lt;br&gt;&lt;i&gt;oltp_sports.sport_activities&lt;/i&gt;&lt;br&gt;Contraintes CHECK SQL :&lt;br&gt;elapsed &amp;gt; 0, end &amp;gt;= start, dist &amp;gt;= 0" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#CCFBF1;strokeColor=#0F766E;fontColor=#134E4A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane3">
+          <mxGeometry x="405" y="43" width="246" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3_cdc" value="&lt;b&gt;Debezium -&amp;gt; Redpanda&lt;/b&gt;&lt;br&gt;Capture CDC temps réel&lt;br&gt;Topic Kafka :&lt;br&gt;&lt;i&gt;sds.oltp_sports.sport_activities&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0F766E;fontColor=#134E4A;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane3">
+          <mxGeometry x="705" y="49" width="226" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3_gate3" value="&lt;b&gt;[PORTE TEST 3]&lt;/b&gt;&lt;br&gt;Coupe-Circuit CDC&lt;br&gt;&lt;i&gt;ingestion_mode ==&lt;br&gt;'live_event' ?&lt;/i&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=10.5;strokeWidth=2;" vertex="1" parent="lane3">
+          <mxGeometry x="985" y="31" width="200" height="154" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3_slack" value="&lt;b&gt;Publication Slack (&amp;lt; 1 s)&lt;/b&gt;&lt;br&gt;&lt;i&gt;slack_consumer.py&lt;/i&gt; -&amp;gt; Webhook HTTP&lt;br&gt;Message personnalisé + commentaire" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontColor=#14532D;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane3">
+          <mxGeometry x="1265" y="24" width="280" height="78" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3_mute" value="&lt;b&gt;Silence Anti-Spam Initial&lt;/b&gt;&lt;br&gt;&lt;i&gt;historical_seed&lt;/i&gt; ignoré côté Slack&lt;br&gt;(Routé vers Lakehouse uniquement)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1F5F9;strokeColor=#64748B;fontColor=#334155;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane3">
+          <mxGeometry x="1265" y="116" width="280" height="78" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3_retry" value="&lt;b&gt;Résilience Webhook&lt;/b&gt;&lt;br&gt;Retry exponentiel HTTP (3x)&lt;br&gt;&amp;amp; journalisation sans&lt;br&gt;blocage du bus CDC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#D97706;fontColor=#78350F;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane3">
+          <mxGeometry x="1590" y="43" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="d4_bronze" value="&lt;b&gt;Couche Bronze (Delta S3)&lt;/b&gt;&lt;br&gt;Bucket &lt;i&gt;sds-bronze&lt;/i&gt;&lt;br&gt;Archivage fidèle du flux&lt;br&gt;Redpanda + horodatage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4338CA;fontColor=#1E1B4B;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane4">
+          <mxGeometry x="70" y="48" width="236" height="124" as="geometry"/>
+        </mxCell>
+        <mxCell id="d4_silver" value="&lt;b&gt;Couche Silver (Polars + Delta)&lt;/b&gt;&lt;br&gt;Bucket &lt;i&gt;sds-silver&lt;/i&gt;&lt;br&gt;- Dédoublonnage &lt;i&gt;activity_id&lt;/i&gt;&lt;br&gt;- Correction &lt;i&gt;Runing -&amp;gt; Course à pied&lt;/i&gt;&lt;br&gt;- Distance NULL hors sports distance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0E7FF;strokeColor=#4338CA;fontColor=#1E1B4B;fontSize=11;align=left;spacingLeft=10;strokeWidth=1.5;" vertex="1" parent="lane4">
+          <mxGeometry x="360" y="40" width="276" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="d4_gate4a" value="&lt;b&gt;[PORTE TEST 4A — Soda Core Silver]&lt;/b&gt;&lt;br&gt;- &lt;i&gt;distance_m &amp;gt;= 0&lt;/i&gt; sur sports mesurés&lt;br&gt;- &lt;i&gt;distance_m IS NULL&lt;/i&gt; sur escalade/tennis...&lt;br&gt;- 100 % &lt;i&gt;employee_id&lt;/i&gt; dans les 161 RH&lt;br&gt;- &lt;i&gt;activity_end &amp;gt;= activity_start&lt;/i&gt; | 0 doublon" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=11;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="lane4">
+          <mxGeometry x="690" y="35" width="326" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="d4_gold" value="&lt;b&gt;Couche Gold (Polars / DuckDB)&lt;/b&gt;&lt;br&gt;Bucket &lt;i&gt;sds-gold&lt;/i&gt;&lt;br&gt;- Croisement RH + Maps + Activités&lt;br&gt;- Prime = Salaire x &lt;i&gt;prime_rate&lt;/i&gt; (validés)&lt;br&gt;- 5 Jours si &amp;gt;= 15 activités / 12 mois" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4F46E5;fontColor=#1E1B4B;fontSize=11;align=left;spacingLeft=10;strokeWidth=1.5;" vertex="1" parent="lane4">
+          <mxGeometry x="1070" y="40" width="296" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="d4_gate4b" value="&lt;b&gt;[PORTE TEST 4B — Soda Core Gold]&lt;/b&gt;&lt;br&gt;- Effectif Gold == 161 collaborateurs&lt;br&gt;- Budget Prime == Somme(Éligibles x Taux)&lt;br&gt;- 0 anomalie Maps incluse dans le budget&lt;br&gt;- 0 adresse postale exposée en couche BI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontColor=#78350F;fontSize=11;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="lane4">
+          <mxGeometry x="1420" y="35" width="420" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="d5_kestra" value="&lt;b&gt;Orchestrateur Kestra&lt;/b&gt;&lt;br&gt;&lt;i&gt;flows/daily_benefits_pipeline.yml&lt;/i&gt;&lt;br&gt;Planification quotidienne CRON&lt;br&gt;&amp;amp; exécution à la demande" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C2410C;fontColor=#7C2D12;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane5">
+          <mxGeometry x="70" y="36" width="236" height="124" as="geometry"/>
+        </mxCell>
+        <mxCell id="d5_mon" value="&lt;b&gt;Observabilité &amp;amp; Monitoring&lt;/b&gt;&lt;br&gt;&lt;i&gt;ops_monitoring.pipeline_runs&lt;/i&gt; &amp;amp;&lt;br&gt;&lt;i&gt;quality_check_results&lt;/i&gt;&lt;br&gt;Volumétrie, durée (ms), statut" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#FFEDD5;strokeColor=#C2410C;fontColor=#7C2D12;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane5">
+          <mxGeometry x="370" y="31" width="290" height="134" as="geometry"/>
+        </mxCell>
+        <mxCell id="d5_recomp" value="&lt;b&gt;Moteur de Recalcul (&amp;lt; 1 s)&lt;/b&gt;&lt;br&gt;&lt;i&gt;scripts/recompute_gold_kpis.py&lt;/i&gt;&lt;br&gt;Variation taux prime / seuils -&amp;gt;&lt;br&gt;Recalcul historique intégral" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontColor=#14532D;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane5">
+          <mxGeometry x="730" y="36" width="276" height="124" as="geometry"/>
+        </mxCell>
+        <mxCell id="d5_mart" value="&lt;b&gt;Exposition SQL Sécurisée&lt;/b&gt;&lt;br&gt;Schéma &lt;i&gt;gold_mart&lt;/i&gt; PostgreSQL&lt;br&gt;Rôle lecture seule &lt;i&gt;sds_bi_reader&lt;/i&gt;&lt;br&gt;(&lt;i&gt;REVOKE ALL&lt;/i&gt; sur &lt;i&gt;hr_restricted&lt;/i&gt;)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#E0E7FF;strokeColor=#4338CA;fontColor=#1E1B4B;fontSize=11;strokeWidth=1.5;" vertex="1" parent="lane5">
+          <mxGeometry x="1070" y="31" width="296" height="134" as="geometry"/>
+        </mxCell>
+        <mxCell id="d5_pbi" value="&lt;b&gt;Restitution Décisionnelle Power BI&lt;/b&gt;&lt;br&gt;- Budget annuel Prime &amp;amp; Simulation dynamique&lt;br&gt;- Collaborateurs éligibles aux 5 jours bien-être&lt;br&gt;- Pratique sportive par discipline, mois &amp;amp; BU&lt;br&gt;- Vue d'audit des anomalies RH &amp;amp; santé des flux" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4338CA;fontColor=#1E1B4B;fontSize=11;align=left;spacingLeft=10;strokeWidth=2;" vertex="1" parent="lane5">
+          <mxGeometry x="1430" y="26" width="410" height="144" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#334155;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#334155;strokeWidth=2;" edge="1" parent="1" source="d1_cfg" target="d1_pyd">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#D97706;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=2;" edge="1" parent="1" source="d1_pyd" target="d1_gate1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="PASS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#16A34A;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#16A34A;strokeWidth=2;" edge="1" parent="1" source="d1_gate1" target="d1_ok">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#1E40AF;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#1E40AF;strokeWidth=2;" edge="1" parent="1" source="d2_xlsx" target="d2_s3raw">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="68 actifs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#1E40AF;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#2563EB;strokeWidth=2;" edge="1" parent="1" source="d2_s3raw" target="d2_maps">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5b" value="93 modes non-sportifs (0 appel API Maps)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#475569;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#64748B;strokeWidth=1.5;dashed=1;" edge="1" parent="1" source="d2_s3raw" target="d2_passive">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="486" y="544"/>
+              <mxPoint x="1714" y="544"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#D97706;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=2;" edge="1" parent="1" source="d2_maps" target="d2_gate2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="OUI" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#16A34A;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#16A34A;strokeWidth=2;" edge="1" parent="1" source="d2_gate2" target="d2_valid">
+          <mxGeometry relative="1" as="geometry" x="-0.15">
+            <Array as="points">
+              <mxPoint x="1096" y="330"/>
+              <mxPoint x="1220" y="330"/>
+              <mxPoint x="1220" y="377"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="NON" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#DC2626;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#DC2626;strokeWidth=2;" edge="1" parent="1" source="d2_gate2" target="d2_anom">
+          <mxGeometry relative="1" as="geometry" x="-0.15">
+            <Array as="points">
+              <mxPoint x="1096" y="514"/>
+              <mxPoint x="1220" y="514"/>
+              <mxPoint x="1220" y="469"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#0F766E;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#0F766E;strokeWidth=2;" edge="1" parent="1" source="d3_gen" target="d3_pg">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e10" value="WAL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#0F766E;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#0F766E;strokeWidth=2;" edge="1" parent="1" source="d3_pg" target="d3_cdc">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#D97706;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=2;" edge="1" parent="1" source="d3_cdc" target="d3_gate3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e12" value="live_event" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#059669;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#059669;strokeWidth=2;" edge="1" parent="1" source="d3_gate3" target="d3_slack">
+          <mxGeometry relative="1" as="geometry" x="-0.15">
+            <Array as="points">
+              <mxPoint x="1115" y="576"/>
+              <mxPoint x="1248" y="576"/>
+              <mxPoint x="1248" y="623"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" value="historical_seed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#334155;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#64748B;strokeWidth=1.5;dashed=1;" edge="1" parent="1" source="d3_gate3" target="d3_mute">
+          <mxGeometry relative="1" as="geometry" x="-0.15">
+            <Array as="points">
+              <mxPoint x="1115" y="762"/>
+              <mxPoint x="1248" y="762"/>
+              <mxPoint x="1248" y="715"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#D97706;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=1.5;dashed=1;" edge="1" parent="1" source="d3_slack" target="d3_retry">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1598" y="623"/>
+              <mxPoint x="1598" y="642"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="Référentiels &amp; Éligibilité Maps validée" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#16A34A;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#16A34A;strokeWidth=1.8;dashed=1;" edge="1" parent="1" source="d2_valid" target="d4_gold">
+          <mxGeometry relative="1" as="geometry" x="0.45">
+            <Array as="points">
+              <mxPoint x="1406" y="324"/>
+              <mxPoint x="1882" y="324"/>
+              <mxPoint x="1882" y="792"/>
+              <mxPoint x="1248" y="792"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e16" value="Flux complet d'événements CDC" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#4338CA;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#4338CA;strokeWidth=2;" edge="1" parent="1" source="d3_cdc" target="d4_bronze">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="848" y="792"/>
+              <mxPoint x="218" y="792"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#4338CA;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#4338CA;strokeWidth=2;" edge="1" parent="1" source="d4_bronze" target="d4_silver">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#D97706;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=2;" edge="1" parent="1" source="d4_silver" target="d4_gate4a">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e19" value="PASS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#16A34A;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#16A34A;strokeWidth=2;" edge="1" parent="1" source="d4_gate4a" target="d4_gold">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#D97706;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#D97706;strokeWidth=2;" edge="1" parent="1" source="d4_gold" target="d4_gate4b">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e21" value="Orchestre" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#C2410C;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#C2410C;strokeWidth=1.8;dashed=1;" edge="1" parent="1" source="d5_kestra" target="d4_bronze">
+          <mxGeometry relative="1" as="geometry" x="-0.1"/>
+        </mxCell>
+        <mxCell id="e22" value="Métriques Soda" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#B45309;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#B45309;strokeWidth=1.8;dashed=1;" edge="1" parent="1" source="d4_gate4a" target="d5_mon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="883" y="1044"/>
+              <mxPoint x="545" y="1044"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e23" value="Recalcul paramétrique (&lt; 1 s)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#15803D;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#15803D;strokeWidth=2;dashed=1;" edge="1" parent="1" source="d5_recomp" target="d4_gold">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="898" y="1044"/>
+              <mxPoint x="1248" y="1044"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e24" value="Publication Gold certifiée" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#4338CA;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.6;entryY=0;entryDx=0;entryDy=0;strokeColor=#4338CA;strokeWidth=2;" edge="1" parent="1" source="d4_gate4b" target="d5_mart">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1660" y="1044"/>
+              <mxPoint x="1277.6" y="1044"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e25" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#C2410C;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#C2410C;strokeWidth=2;" edge="1" parent="1" source="d5_kestra" target="d5_mon">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#C2410C;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#C2410C;strokeWidth=1.5;dashed=1;" edge="1" parent="1" source="d5_recomp" target="d5_mon">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#4338CA;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#4338CA;strokeWidth=2;" edge="1" parent="1" source="d5_mart" target="d5_pbi">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e28" value="Simulation variation taux de prime (ex. 5 %) ou seuils d'éligibilité" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=#FFFFFF;fontSize=10;fontColor=#15803D;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#15803D;strokeWidth=1.8;dashed=1;" edge="1" parent="1" source="d5_pbi" target="d5_recomp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1665" y="1262"/>
+              <mxPoint x="898" y="1262"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

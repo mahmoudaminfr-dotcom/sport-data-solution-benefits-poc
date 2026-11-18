@@ -1,0 +1,159 @@
+name: sds-benefits-platform
+
+services:
+  postgres:
+    image: "postgres:16-alpine"
+    container_name: sds-postgres
+    restart: "no"
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_wal_senders=4"
+      - "-c"
+      - "max_replication_slots=4"
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-sds_platform}"
+      POSTGRES_USER: "${POSTGRES_ADMIN_USER:-sds_admin}"
+      POSTGRES_PASSWORD: "${POSTGRES_ADMIN_PASSWORD}"
+      SDS_PIPELINE_USER: "${SDS_PIPELINE_USER:-sds_pipeline}"
+      SDS_PIPELINE_PASSWORD: "${SDS_PIPELINE_PASSWORD}"
+      SDS_DEBEZIUM_USER: "${SDS_DEBEZIUM_USER:-sds_debezium}"
+      SDS_DEBEZIUM_PASSWORD: "${SDS_DEBEZIUM_PASSWORD}"
+      SDS_BI_READER_USER: "${SDS_BI_READER_USER:-sds_bi_reader}"
+      SDS_BI_READER_PASSWORD: "${SDS_BI_READER_PASSWORD}"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - "sds_pg_data:/var/lib/postgresql/data"
+      - "./postgres/01_init_platform.sh:/docker-entrypoint-initdb.d/01_init_platform.sh:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER:-sds_admin} -d ${POSTGRES_DB:-sds_platform}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sds-net
+
+  minio:
+    image: "pgsty/silo:latest"
+    container_name: sds-minio
+    restart: "no"
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-sds_minio_admin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+    ports:
+      - "9000:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - "sds_minio_data:/data"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sds-net
+
+  redpanda:
+    image: "docker.redpanda.com/redpandadata/redpanda:latest"
+    container_name: sds-redpanda
+    restart: "no"
+    command:
+      - "redpanda"
+      - "start"
+      - "--mode"
+      - "dev-container"
+      - "--smp"
+      - "1"
+      - "--memory"
+      - "512M"
+      - "--kafka-addr"
+      - "internal://0.0.0.0:9092,external://0.0.0.0:19092"
+      - "--advertise-kafka-addr"
+      - "internal://sds-redpanda:9092,external://localhost:19092"
+    ports:
+      - "19092:19092"
+    volumes:
+      - "sds_redpanda_data:/var/lib/redpanda/data"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info", "-X", "brokers=127.0.0.1:9092"]
+      interval: 8s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sds-net
+
+  redpanda-console:
+    image: "docker.redpanda.com/redpandadata/console:latest"
+    container_name: sds-redpanda-console
+    restart: "no"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: "sds-redpanda:29092"
+      CONNECT_ENABLED: "true"
+      CONNECT_CLUSTERS_NAME: "sds-debezium"
+      CONNECT_CLUSTERS_URL: "http://sds-debezium:8083"
+    ports:
+      - "${REDPANDA_CONSOLE_PORT:-8080}:8080"
+    networks:
+      - sds-net
+
+  debezium:
+    image: "quay.io/debezium/connect:2.7"
+    container_name: sds-debezium
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    environment:
+      BOOTSTRAP_SERVERS: "sds-redpanda:9092"
+      GROUP_ID: "sds-cdc-cluster"
+      CONFIG_STORAGE_TOPIC: "_sds_cdc_configs"
+      OFFSET_STORAGE_TOPIC: "_sds_cdc_offsets"
+      STATUS_STORAGE_TOPIC: "_sds_cdc_statuses"
+      CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+      OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+      STATUS_STORAGE_REPLICATION_FACTOR: "1"
+      HEAP_OPTS: "-Xms256M -Xmx768M"
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8083/connectors"]
+      start_period: 25s
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - sds-net
+
+  kestra:
+    image: "kestra/kestra:latest"
+    container_name: sds-kestra
+    profiles:
+      - "orchestration"
+    restart: "no"
+    command: ["server", "standalone"]
+    ports:
+      - "8085:8080"
+    volumes:
+      - "sds_kestra_data:/app/storage"
+      - "../flows:/app/flows:ro"
+    networks:
+      - sds-net
+
+volumes:
+  sds_pg_data: {}
+  sds_minio_data: {}
+  sds_redpanda_data: {}
+  sds_kestra_data: {}
+
+networks:
+  sds-net:
+    driver: bridge

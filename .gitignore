@@ -1,0 +1,48 @@
+# Environnements virtuels et caches Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+pytest-cache-files-*/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Secrets et variables d'environnement
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Protection RGPD : exclusion stricte des fichiers RH nominatifs et caches d'adresses
+data/raw/*
+!data/raw/.gitkeep
+data/cache/*
+!data/cache/.gitkeep
+*.xlsx
+*.xls
+*.csv
+
+# Volumes locaux et journaux d'execution
+docker/volumes/
+logs/
+*.log
+
+# Points de sauvegarde Jupyter
+.ipynb_checkpoints/
+
+# Exports documentaires externes hors depot technique
+deliverables_export/
+
+# Systeme et editeurs
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/

@@ -1,0 +1,45 @@
+company:
+  name: "Sport Data Solution"
+  headquarters_address: "1362 Av. des Platanes, 34970 Lattes, France"
+  currency: "EUR"
+
+mobility_bonus:
+  annual_gross_salary_rate: 0.05
+  eligible_modes:
+    "Marche/running":
+      google_maps_mode: "walking"
+      max_distance_km: 15.0
+    "Vélo/Trottinette/Autres":
+      google_maps_mode: "bicycling"
+      max_distance_km: 25.0
+  non_eligible_modes:
+    - "véhicule thermique/électrique"
+    - "Transports en commun"
+
+wellbeing_days:
+  min_activities_per_year: 15
+  granted_days_count: 5
+  rolling_window_months: 12
+
+sports_catalog:
+  normalization_map:
+    "Runing": "Course à pied"
+    "Running": "Course à pied"
+  distance_tracked_sports:
+    - "Course à pied"
+    - "Randonnée"
+    - "Triathlon"
+    - "Natation"
+    - "Voile"
+    - "Équitation"
+    - "Cyclisme"
+  non_distance_sports:
+    - "Escalade"
+    - "Tennis"
+    - "Badminton"
+    - "Tennis de table"
+    - "Football"
+    - "Rugby"
+    - "Basketball"
+    - "Judo"
+    - "Boxe"
