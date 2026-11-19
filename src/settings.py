@@ -8,7 +8,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_RULES_PATH = PROJECT_ROOT / "config" / "business_rules.yaml"
-PLACEHOLDER_MARKERS = ("change_me", "your_", "placeholder", "xxxx")
+PLACEHOLDER_MARKERS = (
+    "change_me",
+    "your_",
+    "placeholder",
+    "xxxx",
+    "t00000000",
+    "b00000000",
+)
 
 DbRole = Literal["pipeline", "bi_reader", "admin"]
 
@@ -165,6 +172,17 @@ class EnvSettings(BaseSettings):
     redpanda_console_port: int = 8080
     debezium_connect_url: str = "http://localhost:8083"
     redpanda_activity_topic: str = "sds.oltp_sports.sport_activities"
+    redpanda_consumer_group: str = "sds-slack-activity-notifier"
+
+    debezium_connector_name: str = "sds-postgres-activities-cdc"
+    debezium_topic_prefix: str = "sds"
+    debezium_postgres_internal_host: str = "sds-postgres"
+    debezium_postgres_internal_port: int = 5432
+    debezium_publication_name: str = "sds_activities_pub"
+    debezium_slot_name: str = "sds_activities_debezium"
+    debezium_manifest_path: Path = (
+        PROJECT_ROOT / "docker" / "debezium" / "postgres_activities_connector.json"
+    )
 
     google_maps_api_key: SecretStr = SecretStr("")
     google_maps_distance_matrix_url: str = (
@@ -217,6 +235,15 @@ class EnvSettings(BaseSettings):
     def has_valid_google_maps_key(self) -> bool:
         raw = self.google_maps_api_key.get_secret_value().strip()
         if not raw:
+            return False
+        lowered = raw.lower()
+        return not any(marker in lowered for marker in PLACEHOLDER_MARKERS)
+
+    def has_valid_slack_webhook(self) -> bool:
+        if not self.slack_notifications_enabled:
+            return False
+        raw = self.slack_webhook_url.get_secret_value().strip()
+        if not raw or not raw.startswith("https://hooks.slack.com/services/"):
             return False
         lowered = raw.lower()
         return not any(marker in lowered for marker in PLACEHOLDER_MARKERS)

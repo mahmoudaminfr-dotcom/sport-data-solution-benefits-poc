@@ -1,0 +1,29 @@
+{
+  "name": "sds-postgres-activities-cdc",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "plugin.name": "pgoutput",
+    "database.hostname": "sds-postgres",
+    "database.port": "5432",
+    "database.user": "sds_debezium",
+    "database.password": "${SDS_DEBEZIUM_PASSWORD}",
+    "database.dbname": "sds_platform",
+    "topic.prefix": "sds",
+    "schema.include.list": "oltp_sports",
+    "table.include.list": "oltp_sports.sport_activities",
+    "publication.name": "sds_activities_pub",
+    "publication.autocreate.mode": "disabled",
+    "slot.name": "sds_activities_debezium",
+    "snapshot.mode": "initial",
+    "tombstones.on.delete": "false",
+    "decimal.handling.mode": "double",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+    "topic.creation.default.cleanup.policy": "delete"
+  }
+}

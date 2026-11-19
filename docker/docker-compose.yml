@@ -93,8 +93,10 @@ services:
     depends_on:
       redpanda:
         condition: service_healthy
+      debezium:
+        condition: service_healthy
     environment:
-      KAFKA_BROKERS: "sds-redpanda:29092"
+      KAFKA_BROKERS: "sds-redpanda:9092"
       CONNECT_ENABLED: "true"
       CONNECT_CLUSTERS_NAME: "sds-debezium"
       CONNECT_CLUSTERS_URL: "http://sds-debezium:8083"
