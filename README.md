@@ -8,7 +8,7 @@ Plateforme d'ingénierie de données temps réel et analytique destinée à qual
 - **Streaming CDC (`Debezium` + `Redpanda`) :** capture différentielle en temps réel des nouvelles activités vers le topic `sds.oltp_sports.sport_activities`.
 - **Notifications métier (`Python` -> `Slack`) :** publication instantanée des activités unitaires avec coupe-circuit sur le chargement initial d'historique.
 - **Lakehouse (`MinIO S3` + `Delta Lake`) :** structuration Médaillon (`Bronze`, `Silver`, `Gold`) propulsée par `Polars`, `DuckDB` et `deltalake` permettant un recalcul historique complet en moins d'une seconde.
-- **Validation externe (`API Google Maps`) :** contrôle automatisé des distances domicile-travail déclarées (plafonds paramétrables dans `config/business_rules.yaml`).
+- **Validation externe (`API Google Maps`) :** contrôle automatisé des distances domicile-travail déclarées avec cache local pseudonymisé (`SHA-256` salé) et repli routier `BAN + OSRM` (plafonds paramétrables dans `config/business_rules.yaml`).
 - **Qualité et supervision (`Soda Core`, `Pytest`, `Kestra`) :** tests automatisés de cohérence, orchestration quotidienne et suivi des exécutions.
 
 Les logigrammes d'architecture figurent dans `docs/diagrams/` (`architecture_executive.drawio` et `workflow_technique_detaille.drawio`).
@@ -19,17 +19,20 @@ Les logigrammes d'architecture figurent dans `docs/diagrams/` (`architecture_exe
 2. Séparation des privilèges SQL entre trois rôles applicatifs (`sds_pipeline`, `sds_debezium`, `sds_bi_reader`) via `pg8000`.
 3. Révocation totale des droits du rôle décisionnel `sds_bi_reader` sur les schémas `hr_restricted` et `oltp_sports`.
 
-## 3. Démarrage Rapide
+## 3. Démarrage Rapide et Ingestion Initiale
 
 ```powershell
 uv sync --python 3.12 --extra dev
-uv run ruff check src tests
+uv run python -m ruff check .
 uv run python -m pytest -v
 docker compose --env-file .env -f docker/docker-compose.yml up -d
 docker compose --env-file .env -f docker/docker-compose.yml ps
+uv run python -m src.ingestion.minio_loader
+uv run python -m src.ingestion.postgres_generator
 ```
 
 Interfaces locales :
+- PostgreSQL 16 (`sds-postgres`) : `127.0.0.1:5433` (réseau interne Docker : `sds-postgres:5432`)
 - Console MinIO S3 : `http://localhost:9001`
 - Redpanda Console : `http://localhost:8080`
 - API Debezium Connect : `http://localhost:8083/connectors`
