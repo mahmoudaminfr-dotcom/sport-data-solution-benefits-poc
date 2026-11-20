@@ -18,6 +18,7 @@ PLACEHOLDER_MARKERS = (
 )
 
 DbRole = Literal["pipeline", "bi_reader", "admin"]
+LakehouseLayer = Literal["bronze", "silver", "gold"]
 
 
 class CommuteRule(BaseModel):
@@ -161,6 +162,15 @@ class EnvSettings(BaseSettings):
     minio_bucket_silver: str = "sds-silver"
     minio_bucket_gold: str = "sds-gold"
 
+    bronze_employees_table: str = "employees_audit"
+    bronze_activities_table: str = "sport_activities"
+    silver_employees_table: str = "employees_cleansed"
+    silver_activities_table: str = "sport_activities_enriched"
+    gold_employee_benefits_table: str = "fact_employee_benefits"
+    gold_bu_summary_table: str = "agg_benefits_by_bu"
+    gold_sports_monthly_table: str = "agg_sports_monthly"
+    gold_executive_kpis_table: str = "kpi_executive_snapshot"
+
     raw_data_dir: Path = PROJECT_ROOT / "data" / "raw"
     cache_data_dir: Path = PROJECT_ROOT / "data" / "cache"
     hr_source_filename: str = "Données+RH.xlsx"
@@ -212,6 +222,16 @@ class EnvSettings(BaseSettings):
             self.minio_bucket_silver,
             self.minio_bucket_gold,
         )
+
+    def lakehouse_table_uri(self, layer: LakehouseLayer, table_name: str) -> str:
+        buckets: dict[str, str] = {
+            "bronze": self.minio_bucket_bronze,
+            "silver": self.minio_bucket_silver,
+            "gold": self.minio_bucket_gold,
+        }
+        if layer not in buckets:
+            raise ValueError(f"Couche Lakehouse non reconnue : {layer!r}")
+        return f"s3://{buckets[layer]}/{table_name}"
 
     def _resolve_in_raw_dir(self, filename: str) -> Path:
         direct_path = self.raw_data_dir / filename

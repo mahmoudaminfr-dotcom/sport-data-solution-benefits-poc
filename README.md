@@ -6,8 +6,8 @@ Plateforme d'ingénierie de données temps réel et analytique destinée à qual
 
 - **Base transactionnelle et analytique (`PostgreSQL 16`) :** réplication logique (`wal_level = logical`) et cloisonnement en quatre schémas (`hr_restricted`, `oltp_sports`, `gold_mart`, `ops_monitoring`).
 - **Streaming CDC (`Debezium 2.7` + `Redpanda`) :** capture différentielle en temps réel (`pgoutput`) des nouvelles activités vers le topic `sds.oltp_sports.sport_activities` depuis la publication `sds_activities_pub` (`REPLICA IDENTITY FULL`).
-- **Notifications métier (`Python` -> `Slack`) :** consommateur `confluent-kafka` publiant instantanément les séances `live_event` avec coupe-circuit anti-spam sur l'historique (`op = 'r'` et `historical_seed`) et repli journalisé (`dry_run`) lorsque `SLACK_WEBHOOK_URL` conserve sa valeur modèle.
-- **Lakehouse (`MinIO S3` + `Delta Lake`) :** structuration Médaillon (`Bronze`, `Silver`, `Gold`) propulsée par `Polars`, `DuckDB` et `deltalake` permettant un recalcul historique complet en moins d'une seconde.
+- **Notifications métier (`Python` vers `Slack`) :** consommateur `confluent-kafka` publiant instantanément les séances `live_event` avec coupe-circuit anti-spam sur l'historique (`op = 'r'` et `historical_seed`) et repli journalisé (`dry_run`) lorsque `SLACK_WEBHOOK_URL` conserve sa valeur modèle.
+- **Lakehouse (`MinIO S3` + `Delta Lake`) :** structuration Médaillon (`Bronze`, `Silver`, `Gold`) propulsée par `Polars`, `DuckDB` et `deltalake` sans JVM, permettant un recalcul historique complet des KPI en moins de 150 millisecondes côté moteur.
 - **Validation externe (`API Google Maps`) :** contrôle automatisé des distances domicile-travail déclarées avec cache local pseudonymisé (`SHA-256` salé) et repli routier `BAN + OSRM` (plafonds paramétrables dans `config/business_rules.yaml`).
 - **Qualité et supervision (`Soda Core`, `Pytest`, `Kestra`) :** tests automatisés de cohérence, orchestration quotidienne et suivi des exécutions dans `ops_monitoring.pipeline_runs`.
 
@@ -16,8 +16,8 @@ Les logigrammes d'architecture figurent dans `docs/diagrams/` (`architecture_exe
 ## 2. Sécurité et Conformité RGPD
 
 1. Exclusion stricte des fichiers RH nominatifs (`*.xlsx`), caches d'adresses et secrets `.env` via `.gitignore`.
-2. Séparation des privilèges SQL entre trois rôles applicatifs (`sds_pipeline`, `sds_debezium`, `sds_bi_reader`) via `pg8000`.
-3. Isolation stricte du connecteur CDC (`sds_debezium`) sans aucun droit sur `hr_restricted`, et révocation totale des droits du rôle décisionnel `sds_bi_reader` sur `hr_restricted` et `oltp_sports`.
+2. Pseudonymisation déterministe salée (`employee_key` via `SDS_PII_HASH_SALT`) dès l'extraction vers la couche `Bronze` : aucun nom, prénom, identifiant RH brut, commentaire libre ni adresse postale ne transite dans le Lakehouse S3 ou dans `gold_mart`.
+3. Séparation des privilèges SQL entre trois rôles applicatifs (`sds_pipeline`, `sds_debezium`, `sds_bi_reader`) via `pg8000` : isolation stricte de `sds_debezium` hors `hr_restricted`, et accès exclusif de `sds_bi_reader` aux vues et tables décisionnelles de `gold_mart` et `ops_monitoring`.
 
 ## 3. Démarrage Rapide et Ingestion Initiale
 
@@ -43,6 +43,22 @@ uv run python -m src.streaming.cdc_consumer --max-idle-seconds 5.0
 # Injection d'une activité unitaire temps réel (live_event) ou d'un lot
 uv run python scripts/inject_live_activity.py --sport "Course à pied" --duration-minutes 45 --distance-km 8.5 --comment "Sortie collective"
 uv run python scripts/inject_live_activity.py --count 3
+```
+
+## 5. Lakehouse Médaillon (Bronze / Silver / Gold) et Simulation Budgétaire
+
+```powershell
+# Synchronisation des couches Delta Lake Bronze et Silver depuis PostgreSQL
+uv run python -m src.processing.lakehouse_bronze_silver
+
+# Calcul nominal de la couche Gold (Delta Lake sds-gold + PostgreSQL gold_mart)
+uv run python scripts/recompute_gold_kpis.py
+
+# Simulation budgétaire dynamique (ex. prime à 4 % et seuil à 20 activités annuelles)
+uv run python scripts/recompute_gold_kpis.py --prime-rate 0.04 --min-activities 20
+
+# Restauration des paramètres métier de référence (config/business_rules.yaml)
+uv run python scripts/recompute_gold_kpis.py --reset-defaults
 ```
 
 Interfaces locales :
