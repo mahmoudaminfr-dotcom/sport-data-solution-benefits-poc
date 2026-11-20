@@ -17,6 +17,8 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     "python-dotenv>=1.0.1",
     "pyyaml>=6.0.2",
+    "setuptools>=75.0.0,<81.0.0",
+    "soda-core-duckdb>=3.5.0",
     "sqlalchemy>=2.1.9",
 ]
 
@@ -30,6 +32,11 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.7.3",
     "seaborn>=0.13.2",
+]
+
+[tool.uv]
+override-dependencies = [
+    "duckdb>=2.0.0",
 ]
 
 [build-system]

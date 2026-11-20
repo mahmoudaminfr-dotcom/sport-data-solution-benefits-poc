@@ -171,6 +171,9 @@ class EnvSettings(BaseSettings):
     gold_sports_monthly_table: str = "agg_sports_monthly"
     gold_executive_kpis_table: str = "kpi_executive_snapshot"
 
+    soda_config_path: Path = PROJECT_ROOT / "config" / "soda" / "configuration.yml"
+    soda_checks_path: Path = PROJECT_ROOT / "config" / "soda" / "checks_pipeline.yml"
+
     raw_data_dir: Path = PROJECT_ROOT / "data" / "raw"
     cache_data_dir: Path = PROJECT_ROOT / "data" / "cache"
     hr_source_filename: str = "Données+RH.xlsx"

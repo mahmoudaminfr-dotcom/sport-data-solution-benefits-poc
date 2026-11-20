@@ -1,0 +1,136 @@
+checks for hr_employees_audit:
+  - row_count > 0:
+      name: hr_audit_non_empty
+  - duplicate_count(employee_key) = 0:
+      name: hr_audit_unique_employee_key
+  - min(annual_gross_salary_eur) > 0:
+      name: hr_audit_positive_gross_salary
+  - min(computed_distance_km) >= 0:
+      name: hr_audit_non_negative_commute_distance
+  - unquarantined_commute_bonus_count = 0:
+      name: hr_audit_maps_anomalies_excluded_from_bonus
+      unquarantined_commute_bonus_count query: |
+        SELECT COUNT(*)
+        FROM hr_employees_audit
+        WHERE is_mobility_bonus_eligible = TRUE
+          AND (
+            is_commute_anomaly = TRUE
+            OR computed_distance_km IS NULL
+            OR computed_distance_km < 0
+            OR max_allowed_distance_km IS NULL
+            OR computed_distance_km > max_allowed_distance_km
+          )
+  - unflagged_commute_violation_count = 0:
+      name: hr_audit_maps_violations_flagged_as_anomaly
+      unflagged_commute_violation_count query: |
+        SELECT COUNT(*)
+        FROM hr_employees_audit
+        WHERE max_allowed_distance_km IS NOT NULL
+          AND (
+            computed_distance_km IS NULL
+            OR computed_distance_km < 0
+            OR computed_distance_km > max_allowed_distance_km
+          )
+          AND is_commute_anomaly = FALSE
+
+checks for bronze_employees_audit:
+  - missing_count(employee_key) = 0:
+      name: bronze_employees_no_missing_key
+  - duplicate_count(employee_key) = 0:
+      name: bronze_employees_unique_key
+
+checks for bronze_sport_activities:
+  - row_count > 0:
+      name: bronze_activities_non_empty
+  - duplicate_count(activity_id) = 0:
+      name: bronze_activities_unique_id
+
+checks for silver_employees_cleansed:
+  - bronze_silver_headcount_diff = 0:
+      name: silver_employees_reconciled_with_bronze
+      bronze_silver_headcount_diff query: |
+        SELECT ABS(
+          (SELECT COUNT(*) FROM silver_employees_cleansed)
+          - (SELECT COUNT(*) FROM bronze_employees_audit)
+        )
+
+checks for silver_sport_activities:
+  - orphan_employee_ref_count = 0:
+      name: silver_activities_valid_employee_fk
+      orphan_employee_ref_count query: |
+        SELECT COUNT(*)
+        FROM silver_sport_activities a
+        LEFT JOIN silver_employees_cleansed e
+          ON a.employee_key = e.employee_key
+        WHERE e.employee_key IS NULL
+  - invalid_chronology_count = 0:
+      name: silver_activities_chronology_coherent
+      invalid_chronology_count query: |
+        SELECT COUNT(*)
+        FROM silver_sport_activities
+        WHERE activity_end < activity_start
+           OR elapsed_seconds <= 0
+  - pre_hire_activity_count = 0:
+      name: silver_activities_after_hire_date
+      pre_hire_activity_count query: |
+        SELECT COUNT(*)
+        FROM silver_sport_activities
+        WHERE is_after_hire_date = FALSE
+  - negative_activity_distance_count = 0:
+      name: silver_activities_non_negative_distance
+      negative_activity_distance_count query: |
+        SELECT COUNT(*)
+        FROM silver_sport_activities
+        WHERE distance_m IS NOT NULL
+          AND distance_m < 0
+  - incoherent_sport_distance_count = 0:
+      name: silver_activities_sport_distance_coherent
+      incoherent_sport_distance_count query: |
+        SELECT COUNT(*)
+        FROM silver_sport_activities
+        WHERE is_distance_coherent = FALSE
+  - unnormalized_sport_label_count = 0:
+      name: silver_activities_normalized_sports_catalog
+      unnormalized_sport_label_count query: |
+        SELECT COUNT(*)
+        FROM silver_sport_activities
+        WHERE is_catalog_sport = FALSE
+           OR sport_type = 'Runing'
+
+checks for gold_fact_employee_benefits:
+  - gold_silver_headcount_diff = 0:
+      name: gold_fact_headcount_reconciled_with_silver
+      gold_silver_headcount_diff query: |
+        SELECT ABS(
+          (SELECT COUNT(*) FROM gold_fact_employee_benefits)
+          - (SELECT COUNT(*) FROM silver_employees_cleansed)
+        )
+  - invalid_mobility_bonus_grant_count = 0:
+      name: gold_fact_no_bonus_on_ineligible_or_anomaly
+      invalid_mobility_bonus_grant_count query: |
+        SELECT COUNT(*)
+        FROM gold_fact_employee_benefits
+        WHERE (is_commute_anomaly = TRUE OR is_mobility_bonus_eligible = FALSE)
+          AND mobility_bonus_eur > 0
+  - invalid_wellbeing_grant_count = 0:
+      name: gold_fact_wellbeing_days_coherent_with_threshold
+      invalid_wellbeing_grant_count query: |
+        SELECT COUNT(*)
+        FROM gold_fact_employee_benefits
+        WHERE (is_wellbeing_eligible = FALSE AND wellbeing_days_granted > 0)
+           OR (is_wellbeing_eligible = TRUE AND wellbeing_days_granted <= 0)
+
+checks for gold_kpi_executive_snapshot:
+  - row_count = 1:
+      name: gold_kpi_singleton_snapshot
+  - budget_reconciliation_cent_gap = 0:
+      name: gold_kpi_budget_reconciled_with_bu_summary
+      budget_reconciliation_cent_gap query: |
+        SELECT CASE
+          WHEN ABS(
+            (SELECT COALESCE(SUM(total_mobility_bonus_eur), 0.0) FROM gold_agg_benefits_by_bu)
+            - (SELECT COALESCE(SUM(total_mobility_bonus_eur), 0.0) FROM gold_kpi_executive_snapshot)
+          ) < 0.01
+          THEN 0
+          ELSE 1
+        END

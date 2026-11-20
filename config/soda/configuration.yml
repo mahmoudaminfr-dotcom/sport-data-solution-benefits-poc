@@ -1,0 +1,4 @@
+data_source_name: sds_lakehouse
+scan_definition_name: sds_medallion_quality_gate
+send_anonymous_usage_stats: false
+fail_on_warn: false

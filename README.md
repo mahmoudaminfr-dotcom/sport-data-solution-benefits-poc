@@ -9,7 +9,7 @@ Plateforme d'ingénierie de données temps réel et analytique destinée à qual
 - **Notifications métier (`Python` vers `Slack`) :** consommateur `confluent-kafka` publiant instantanément les séances `live_event` avec coupe-circuit anti-spam sur l'historique (`op = 'r'` et `historical_seed`) et repli journalisé (`dry_run`) lorsque `SLACK_WEBHOOK_URL` conserve sa valeur modèle.
 - **Lakehouse (`MinIO S3` + `Delta Lake`) :** structuration Médaillon (`Bronze`, `Silver`, `Gold`) propulsée par `Polars`, `DuckDB` et `deltalake` sans JVM, permettant un recalcul historique complet des KPI en moins de 150 millisecondes côté moteur.
 - **Validation externe (`API Google Maps`) :** contrôle automatisé des distances domicile-travail déclarées avec cache local pseudonymisé (`SHA-256` salé) et repli routier `BAN + OSRM` (plafonds paramétrables dans `config/business_rules.yaml`).
-- **Qualité et supervision (`Soda Core`, `Pytest`, `Kestra`) :** tests automatisés de cohérence, orchestration quotidienne et suivi des exécutions dans `ops_monitoring.pipeline_runs`.
+- **Qualité et supervision (`Soda Core`, `Pytest`, `Kestra`) :** 22 contrats SodaCL multi-couches (`config/soda/checks_pipeline.yml`), orchestration quotidienne et suivi des exécutions dans `ops_monitoring.pipeline_runs` et `ops_monitoring.quality_check_results`.
 
 Les logigrammes d'architecture figurent dans `docs/diagrams/` (`architecture_executive.drawio` et `workflow_technique_detaille.drawio`).
 
@@ -59,6 +59,16 @@ uv run python scripts/recompute_gold_kpis.py --prime-rate 0.04 --min-activities 
 
 # Restauration des paramètres métier de référence (config/business_rules.yaml)
 uv run python scripts/recompute_gold_kpis.py --reset-defaults
+```
+
+## 6. Contrôles de Qualité Automatisés (Soda Core)
+
+```powershell
+# Exécution bloquante des 22 contrats SodaCL (hr_audit, bronze, silver, gold)
+uv run python -m src.quality.soda_runner
+
+# Exécution en mode audit non bloquant (journalisation dans ops_monitoring.quality_check_results)
+uv run python -m src.quality.soda_runner --no-fail-exit
 ```
 
 Interfaces locales :
