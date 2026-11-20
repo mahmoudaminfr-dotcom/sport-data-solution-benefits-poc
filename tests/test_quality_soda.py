@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -180,6 +181,7 @@ def test_soda_quality_gate_passes_on_compliant_medallion() -> None:
     cfg = EnvSettings(_env_file=None, sds_pii_hash_salt=SecretStr("unit_test_salt_32"))
     fake_conn = FakeConnection()
     datasets = _build_valid_medallion_datasets()
+    env_before = os.environ.copy()
 
     report = run_quality_gate(
         cfg,
@@ -189,6 +191,7 @@ def test_soda_quality_gate_passes_on_compliant_medallion() -> None:
         raise_on_failure=True,
     )
 
+    assert os.environ == env_before
     assert report["status"] == "SUCCESS"
     assert report["total_checks"] == 22
     assert report["passed_checks"] == 22

@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import json
 import logging
 import os
@@ -6,6 +7,7 @@ import sys
 import tempfile
 import types
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -66,29 +68,36 @@ def _ensure_distutils_strtobool() -> None:
     sys.modules["distutils.util"] = util_mod
 
 
+@contextlib.contextmanager
+def _isolated_soda_environ() -> Iterator[None]:
+    """Isole os.environ contre l'appel implicite load_dotenv() de Soda Core."""
+    env_snapshot = os.environ.copy()
+    try:
+        os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(env_snapshot)
+
+
 def _create_configured_soda_scan(
     data_source_name: str,
     scan_definition_name: str,
 ) -> Any:
-    """Charge Soda Scan sans polluer os.environ via load_dotenv() et sans telemetrie HTTP."""
+    """Instancie Soda Scan sans polluer os.environ et sans telemetrie HTTP."""
     _ensure_distutils_strtobool()
-    env_snapshot = os.environ.copy()
-    try:
-        os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+    with _isolated_soda_environ():
         from soda.common.config_helper import ConfigHelper
 
         cfg_helper = ConfigHelper.get_instance()
         cfg_helper.upsert_value("send_anonymous_usage_stats", False)
 
         from soda.scan import Scan
-    finally:
-        os.environ.clear()
-        os.environ.update(env_snapshot)
 
-    scan = Scan()
-    scan.set_scan_definition_name(scan_definition_name)
-    scan.set_data_source_name(data_source_name)
-    return scan
+        scan = Scan()
+        scan.set_scan_definition_name(scan_definition_name)
+        scan.set_data_source_name(data_source_name)
+        return scan
 
 
 def _prepare_df_for_duckdb(df: pl.DataFrame) -> pl.DataFrame:
@@ -232,15 +241,18 @@ def evaluate_soda_checks_on_tables(
             for tbl_name, df in tables.items():
                 _materialize_duckdb_table(con, tbl_name, df, tmp_dir)
 
-            scan = _create_configured_soda_scan(data_source_name, scan_def_name)
-            scan.add_duckdb_connection(con, data_source_name=data_source_name)
-            scan.add_sodacl_yaml_str(sodacl_str)
-            exit_code = scan.execute()
-            scan_results = scan.get_scan_results()
+            with _isolated_soda_environ():
+                scan = _create_configured_soda_scan(data_source_name, scan_def_name)
+                scan.add_duckdb_connection(con, data_source_name=data_source_name)
+                scan.add_sodacl_yaml_str(sodacl_str)
+                exit_code = scan.execute()
+                scan_results = scan.get_scan_results()
 
-            if scan.has_error_logs() or exit_code == 3:
-                err_txt = scan.get_error_logs_text()
-                raise RuntimeError(f"Erreur d'execution SodaCL (code={exit_code}) : {err_txt}")
+                if scan.has_error_logs() or exit_code == 3:
+                    err_txt = scan.get_error_logs_text()
+                    raise RuntimeError(
+                        f"Erreur d'execution SodaCL (code={exit_code}) : {err_txt}"
+                    )
         finally:
             con.close()
 
