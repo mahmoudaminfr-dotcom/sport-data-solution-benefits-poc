@@ -9,7 +9,7 @@ Plateforme d'ingénierie de données temps réel et analytique destinée à qual
 - **Notifications métier (`Python` vers `Slack`) :** consommateur `confluent-kafka` publiant instantanément les séances `live_event` avec coupe-circuit anti-spam sur l'historique (`op = 'r'` et `historical_seed`) et repli journalisé (`dry_run`) lorsque `SLACK_WEBHOOK_URL` conserve sa valeur modèle.
 - **Lakehouse (`MinIO S3` + `Delta Lake`) :** structuration Médaillon (`Bronze`, `Silver`, `Gold`) propulsée par `Polars`, `DuckDB` et `deltalake` sans JVM, permettant un recalcul historique complet des KPI en moins de 150 millisecondes côté moteur.
 - **Validation externe (`API Google Maps`) :** contrôle automatisé des distances domicile-travail déclarées avec cache local pseudonymisé (`SHA-256` salé) et repli routier `BAN + OSRM` (plafonds paramétrables dans `config/business_rules.yaml`).
-- **Qualité et supervision (`Soda Core`, `Pytest`, `Kestra`) :** 22 contrats SodaCL multi-couches (`config/soda/checks_pipeline.yml`), orchestration quotidienne et suivi des exécutions dans `ops_monitoring.pipeline_runs` et `ops_monitoring.quality_check_results`.
+- **Orchestration, qualité et supervision (`Kestra`, `Soda Core`, `Pytest`) :** workflow quotidien `flows/daily_benefits_pipeline.yml`, 22 contrats SodaCL multi-couches (`config/soda/checks_pipeline.yml`) et vues de supervision `ops_monitoring` (`v_pipeline_health_summary`, `v_layer_freshness_status`, `v_quality_latest_checks`, `v_quality_layer_summary`) accessibles en lecture à `sds_bi_reader`.
 
 Les logigrammes d'architecture figurent dans `docs/diagrams/` (`architecture_executive.drawio` et `workflow_technique_detaille.drawio`).
 
@@ -71,8 +71,23 @@ uv run python -m src.quality.soda_runner
 uv run python -m src.quality.soda_runner --no-fail-exit
 ```
 
+## 7. Orchestration Quotidienne Kestra et Monitoring Continu
+
+```powershell
+# Démarrage du service d'orchestration Kestra (profil orchestration)
+docker compose --env-file .env -f docker/docker-compose.yml --profile orchestration up -d
+
+# Validation locale, déploiement idempotent et exécution du workflow quotidien
+uv run python -m src.monitoring.kestra_orchestrator --validate-only
+uv run python -m src.monitoring.kestra_orchestrator --deploy --trigger
+
+# Consolidation et rapport de santé plateforme (vues ops_monitoring lisibles par sds_bi_reader)
+uv run python -m src.monitoring.pipeline_monitor --role bi_reader --skip-views
+```
+
 Interfaces locales :
 - PostgreSQL 16 (`sds-postgres`) : `127.0.0.1:5433` (réseau interne Docker : `sds-postgres:5432`)
 - Console MinIO S3 : `http://localhost:9001`
 - Redpanda Console : `http://localhost:8080`
 - API Debezium Connect : `http://localhost:8083/connectors`
+- Orchestrateur Kestra : `http://localhost:8085`

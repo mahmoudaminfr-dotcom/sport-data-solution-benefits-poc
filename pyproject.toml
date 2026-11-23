@@ -57,3 +57,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.coverage.run]
+timid = true
+disable_warnings = ["no-ctracer"]

@@ -1,0 +1,126 @@
+id: daily_benefits_pipeline
+namespace: sds.benefits
+description: >-
+  Orchestration quotidienne de la plateforme Sport Data Solution :
+  synchronisation des referentiels S3 et OLTP PostgreSQL, rafraichissement
+  Delta Lake Bronze/Silver/Gold, synchronisation transactionnelle gold_mart,
+  portail qualite bloquant Soda Core et consolidation ops_monitoring.
+
+labels:
+  domain: rh-sports-benefits
+  layer: medallion-lakehouse
+  schedule: daily
+
+concurrency:
+  limit: 1
+  behavior: QUEUE
+
+inputs:
+  - id: reset_defaults
+    type: BOOL
+    defaults: true
+    description: Applique strictement les regles nominales de config/business_rules.yaml.
+  - id: prime_rate
+    type: FLOAT
+    defaults: 0.05
+    description: Taux annuel de prime mobilite utilise lorsque reset_defaults vaut false.
+  - id: min_activities
+    type: INT
+    defaults: 15
+    description: Seuil annuel minimal d'activites lorsque reset_defaults vaut false.
+  - id: wellbeing_days
+    type: INT
+    defaults: 5
+    description: Nombre de journees bien-etre accordees lorsque reset_defaults vaut false.
+  - id: sla_hours
+    type: FLOAT
+    defaults: 26.0
+    description: Fenetre SLA de fraicheur en heures pour l'audit des couches batch.
+
+tasks:
+  - id: bootstrap_python_runtime
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Synchronise de facon idempotente l'environnement Python Linux depuis uv.lock.
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - uv sync --locked --no-dev --no-install-project --directory /workspace
+
+  - id: sync_s3_and_postgres_oltp
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Verifie les referentiels S3 MinIO et synchronise l'audit RH et l'OLTP sportif.
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - PYTHONPATH=/workspace /app/storage/sds-venv/bin/python -m src.ingestion.minio_loader
+      - PYTHONPATH=/workspace /app/storage/sds-venv/bin/python -m src.ingestion.postgres_generator
+
+  - id: refresh_lakehouse_bronze_silver
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Alimente les tables Delta Lake Bronze et Silver avec pseudonymisation RGPD.
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - PYTHONPATH=/workspace /app/storage/sds-venv/bin/python -m src.processing.lakehouse_bronze_silver
+
+  - id: recompute_lakehouse_gold_and_mart
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Recalcule la couche Gold via DuckDB/Polars et synchronise le schema gold_mart.
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        if [ "{{ inputs.reset_defaults }}" = "true" ]; then
+          PYTHONPATH=/workspace /app/storage/sds-venv/bin/python -m scripts.recompute_gold_kpis --reset-defaults
+        else
+          PYTHONPATH=/workspace /app/storage/sds-venv/bin/python -m scripts.recompute_gold_kpis \
+            --prime-rate {{ inputs.prime_rate }} \
+            --min-activities {{ inputs.min_activities }} \
+            --wellbeing-days {{ inputs.wellbeing_days }}
+        fi
+
+  - id: run_soda_quality_gate
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Execute les 22 contrats SodaCL bloquants et historise les resultats.
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - PYTHONPATH=/workspace /app/storage/sds-venv/bin/python -m src.quality.soda_runner
+
+  - id: consolidate_ops_monitoring
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Met a jour les vues SQL ops_monitoring et verifie l'etat de sante global.
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - >-
+        PYTHONPATH=/workspace /app/storage/sds-venv/bin/python -m src.monitoring.pipeline_monitor
+        --record-run
+        --fail-on-critical
+        --alert-on-critical
+        --sla-hours {{ inputs.sla_hours }}
+        --execution-id {{ execution.id }}
+
+errors:
+  - id: notify_slack_on_failure
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Emet une notification d'alerte Slack avec repli dry_run en cas d'echec.
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        PY_BIN="/app/storage/sds-venv/bin/python"
+        if [ ! -x "$PY_BIN" ]; then
+          PY_BIN="python3"
+        fi
+        PYTHONPATH=/workspace "$PY_BIN" -m src.monitoring.pipeline_monitor \
+          --send-failure-alert \
+          --failed-step "{{ flow.id }}" \
+          --execution-id "{{ execution.id }}" \
+          --error-summary "Echec d'une tache du workflow quotidien Kestra (execution={{ execution.id }})."
+
+triggers:
+  - id: daily_morning_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 6 * * *"
+    timezone: Europe/Paris

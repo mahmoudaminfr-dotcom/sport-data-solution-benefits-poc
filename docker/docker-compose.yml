@@ -135,18 +135,107 @@ services:
     networks:
       - sds-net
 
+  kestra-init:
+    image: "kestra/kestra:latest"
+    container_name: sds-kestra-init
+    profiles:
+      - "orchestration"
+    restart: "no"
+    user: "0:0"
+    entrypoint:
+      - "/bin/sh"
+      - "-c"
+      - "mkdir -p /app/storage/sds-venv /app/storage/uv-cache && chown -R 1000:1000 /app/storage"
+    volumes:
+      - "sds_kestra_data:/app/storage"
+    networks:
+      - sds-net
+
   kestra:
     image: "kestra/kestra:latest"
     container_name: sds-kestra
     profiles:
       - "orchestration"
     restart: "no"
-    command: ["server", "standalone"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      kestra-init:
+        condition: service_completed_successfully
+    command: ["server", "local"]
+    environment:
+      KESTRA_CONFIGURATION: |
+        micronaut:
+          server:
+            port: 8080
+        kestra:
+          tutorial-flows:
+            enabled: false
+          anonymous-usage-report:
+            enabled: false
+          server:
+            basic-auth:
+              enabled: true
+              username: "${KESTRA_BASIC_AUTH_USERNAME:-ops@sportdatasolution.fr}"
+              password: "${KESTRA_BASIC_AUTH_PASSWORD:-SdsKestraOps2026!}"
+      POSTGRES_HOST: "sds-postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: "${POSTGRES_DB:-sds_platform}"
+      POSTGRES_ADMIN_USER: "${POSTGRES_ADMIN_USER:-sds_admin}"
+      POSTGRES_ADMIN_PASSWORD: "${POSTGRES_ADMIN_PASSWORD}"
+      SDS_PIPELINE_USER: "${SDS_PIPELINE_USER:-sds_pipeline}"
+      SDS_PIPELINE_PASSWORD: "${SDS_PIPELINE_PASSWORD}"
+      SDS_DEBEZIUM_USER: "${SDS_DEBEZIUM_USER:-sds_debezium}"
+      SDS_DEBEZIUM_PASSWORD: "${SDS_DEBEZIUM_PASSWORD}"
+      SDS_BI_READER_USER: "${SDS_BI_READER_USER:-sds_bi_reader}"
+      SDS_BI_READER_PASSWORD: "${SDS_BI_READER_PASSWORD}"
+      MINIO_ENDPOINT: "http://sds-minio:9000"
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-sds_minio_admin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+      MINIO_REGION: "${MINIO_REGION:-eu-west-3}"
+      MINIO_BUCKET_RAW: "${MINIO_BUCKET_RAW:-sds-raw-referentials}"
+      MINIO_BUCKET_BRONZE: "${MINIO_BUCKET_BRONZE:-sds-bronze}"
+      MINIO_BUCKET_SILVER: "${MINIO_BUCKET_SILVER:-sds-silver}"
+      MINIO_BUCKET_GOLD: "${MINIO_BUCKET_GOLD:-sds-gold}"
+      REDPANDA_BROKERS: "sds-redpanda:9092"
+      DEBEZIUM_CONNECT_URL: "http://sds-debezium:8083"
+      REDPANDA_ACTIVITY_TOPIC: "${REDPANDA_ACTIVITY_TOPIC:-sds.oltp_sports.sport_activities}"
+      GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:-}"
+      SLACK_WEBHOOK_URL: "${SLACK_WEBHOOK_URL:-}"
+      SLACK_CHANNEL_NAME: "${SLACK_CHANNEL_NAME:-#defis-sportifs-sds}"
+      SLACK_NOTIFICATIONS_ENABLED: "${SLACK_NOTIFICATIONS_ENABLED:-true}"
+      SDS_PII_HASH_SALT: "${SDS_PII_HASH_SALT}"
+      UV_PROJECT_ENVIRONMENT: "/app/storage/sds-venv"
+      UV_CACHE_DIR: "/app/storage/uv-cache"
+      UV_PYTHON: "/usr/bin/python3"
+      UV_PYTHON_DOWNLOADS: "never"
+      SODA_TELEMETRY_DISABLED: "true"
+      DO_NOT_TRACK: "1"
     ports:
-      - "8085:8080"
+      - "${KESTRA_PORT:-8085}:8080"
     volumes:
       - "sds_kestra_data:/app/storage"
       - "../flows:/app/flows:ro"
+      - "../pyproject.toml:/workspace/pyproject.toml:ro"
+      - "../uv.lock:/workspace/uv.lock:ro"
+      - "../README.md:/workspace/README.md:ro"
+      - "../config:/workspace/config:ro"
+      - "../src:/workspace/src:ro"
+      - "../scripts:/workspace/scripts:ro"
+      - "../data/raw:/workspace/data/raw:ro"
+      - "../data/cache:/workspace/data/cache"
+    healthcheck:
+      test:
+        - "CMD"
+        - "python3"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/v1/configs/login', timeout=4)"
+      start_period: 25s
+      interval: 10s
+      timeout: 5s
+      retries: 12
     networks:
       - sds-net
 

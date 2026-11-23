@@ -174,6 +174,23 @@ class EnvSettings(BaseSettings):
     soda_config_path: Path = PROJECT_ROOT / "config" / "soda" / "configuration.yml"
     soda_checks_path: Path = PROJECT_ROOT / "config" / "soda" / "checks_pipeline.yml"
 
+    monitoring_freshness_sla_hours: float = 26.0
+    monitoring_required_layers: tuple[str, ...] = (
+        "lakehouse_bronze_silver",
+        "lakehouse_gold",
+        "quality_gate",
+    )
+
+    kestra_url: str = "http://localhost:8085"
+    kestra_port: int = 8085
+    kestra_api_tenant: str = "main"
+    kestra_basic_auth_enabled: bool = True
+    kestra_basic_auth_username: str = "ops@sportdatasolution.fr"
+    kestra_basic_auth_password: SecretStr = SecretStr("change_me_kestra_secret")
+    kestra_namespace: str = "sds.benefits"
+    kestra_daily_flow_id: str = "daily_benefits_pipeline"
+    kestra_daily_flow_path: Path = PROJECT_ROOT / "flows" / "daily_benefits_pipeline.yml"
+
     raw_data_dir: Path = PROJECT_ROOT / "data" / "raw"
     cache_data_dir: Path = PROJECT_ROOT / "data" / "cache"
     hr_source_filename: str = "Données+RH.xlsx"
@@ -270,6 +287,21 @@ class EnvSettings(BaseSettings):
             return False
         lowered = raw.lower()
         return not any(marker in lowered for marker in PLACEHOLDER_MARKERS)
+
+    def kestra_api_base_url(self) -> str:
+        base = self.kestra_url.rstrip("/")
+        tenant = self.kestra_api_tenant.strip().strip("/")
+        if tenant:
+            return f"{base}/api/v1/{tenant}"
+        return f"{base}/api/v1"
+
+    def kestra_basic_auth_tuple(self) -> tuple[str, str] | None:
+        if not self.kestra_basic_auth_enabled:
+            return None
+        return (
+            self.kestra_basic_auth_username,
+            self.kestra_basic_auth_password.get_secret_value(),
+        )
 
     def pg8000_connect_kwargs(self, role: DbRole = "pipeline") -> dict[str, object]:
         credentials: dict[DbRole, tuple[str, SecretStr]] = {
