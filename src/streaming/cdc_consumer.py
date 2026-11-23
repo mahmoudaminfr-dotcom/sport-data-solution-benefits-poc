@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import json
 import logging
@@ -6,17 +8,20 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import pg8000.dbapi
-from confluent_kafka import Consumer, KafkaError
 
 from src.settings import EnvSettings
 from src.streaming.slack_notifier import ActivityEvent, SlackNotifier
 
+if TYPE_CHECKING:
+    from confluent_kafka import Consumer
+
 logger = logging.getLogger(__name__)
 
 PIPELINE_NAME = "cdc_slack_activity_consumer"
+KAFKA_PARTITION_EOF_CODE = -191
 SNAPSHOT_FLAGS = frozenset(
     {"true", "first", "first_in_data_collection", "last_in_data_collection", "last"}
 )
@@ -78,6 +83,19 @@ def _parse_optional_timestamp(raw_val: Any) -> datetime | None:
             cleaned = f"{cleaned[:-1]}+00:00"
         return datetime.fromisoformat(cleaned)
     return None
+
+
+def _is_partition_eof(err: Any) -> bool:
+    code_fn = getattr(err, "code", None)
+    if not callable(code_fn):
+        return False
+    err_code = code_fn()
+    try:
+        from confluent_kafka import KafkaError
+
+        return bool(err_code == KafkaError._PARTITION_EOF)
+    except ImportError:
+        return bool(err_code == KAFKA_PARTITION_EOF_CODE)
 
 
 def evaluate_cdc_payload(
@@ -188,6 +206,8 @@ def _record_consumer_run(
 
 
 def build_kafka_consumer(settings: EnvSettings, group_id: str | None = None) -> Consumer:
+    from confluent_kafka import Consumer as ConfluentConsumer
+
     effective_group = group_id or settings.redpanda_consumer_group
     conf = {
         "bootstrap.servers": settings.redpanda_brokers,
@@ -196,7 +216,7 @@ def build_kafka_consumer(settings: EnvSettings, group_id: str | None = None) -> 
         "enable.auto.commit": False,
         "log_level": 2,
     }
-    return Consumer(conf)
+    return ConfluentConsumer(conf)
 
 
 def consume_activity_stream(
@@ -234,7 +254,7 @@ def consume_activity_stream(
     seen_activity_ids: set[int] = set()
     stop_requested = False
 
-    def _handle_stop(signum, frame) -> None:
+    def _handle_stop(signum: int, frame: Any) -> None:
         nonlocal stop_requested
         stop_requested = True
 
@@ -265,7 +285,7 @@ def consume_activity_stream(
 
             err = msg.error()
             if err is not None:
-                if err.code() == KafkaError._PARTITION_EOF:
+                if _is_partition_eof(err):
                     continue
                 raise RuntimeError(f"Erreur consommateur Redpanda : {err}")
 
