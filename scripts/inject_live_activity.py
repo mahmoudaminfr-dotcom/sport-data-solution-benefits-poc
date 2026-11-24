@@ -1,8 +1,10 @@
 import argparse
 import json
 import logging
+import random
 import subprocess
 import sys
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -17,19 +19,43 @@ PIPELINE_NAME = "live_activity_injection"
 DEFAULT_SPEED_KMH: dict[str, float] = {
     "Course à pied": 10.8,
     "Randonnée": 4.5,
+    "Cyclisme": 24.0,
+    "Triathlon": 18.5,
     "Vélo de route": 26.0,
     "VTT": 17.5,
     "Natation": 2.6,
+    "Voile": 11.0,
+    "Équitation": 12.0,
     "Marche nordique": 5.8,
     "Trottinette": 14.0,
 }
+DEMO_SPORTS: tuple[str, ...] = (
+    "Course à pied",
+    "Randonnée",
+    "Cyclisme",
+    "Natation",
+    "Triathlon",
+    "Tennis",
+    "Badminton",
+    "Escalade",
+    "Football",
+    "Basketball",
+    "Rugby",
+)
+DEMO_COMMENTS: tuple[str, ...] = (
+    "Séance collective à la pause déjeuner",
+    "Sortie sportive après le travail",
+    "Entraînement régulier de la semaine",
+    "Session matinale avant la prise de poste",
+    "Sortie entre collègues en fin de journée",
+)
 
 
 def resolve_employee_identity(
     conn: pg8000.dbapi.Connection,
     employee_id: int | None = None,
 ) -> tuple[int, str, str | None]:
-    """Resout l'identite et le sport habituel sans exposer les colonnes salariales ou d'adresse."""
+    """Resout l'identite et le sport habituel sans exposer salaire ni adresse."""
     cur = conn.cursor()
     try:
         if employee_id is not None:
@@ -57,7 +83,9 @@ def resolve_employee_identity(
             )
             hr_row = cur.fetchone()
             if not hr_row:
-                raise ValueError(f"Collaborateur introuvable pour employee_id={employee_id}")
+                raise ValueError(
+                    f"Collaborateur introuvable pour employee_id={employee_id}"
+                )
             full_name = f"{hr_row[1]} {hr_row[2]}".strip()
             return (int(hr_row[0]), full_name, None)
 
@@ -87,7 +115,9 @@ def resolve_employee_identity(
         )
         fallback_row = cur.fetchone()
         if not fallback_row:
-            raise RuntimeError("Aucun collaborateur disponible en base pour l'injection live")
+            raise RuntimeError(
+                "Aucun collaborateur disponible en base pour l'injection live"
+            )
         return (
             int(fallback_row[0]),
             f"{fallback_row[1]} {fallback_row[2]}".strip(),
@@ -106,7 +136,9 @@ def prepare_live_activity_parameters(
     comment: str | None = None,
 ) -> tuple[str, int, int | None, str | None]:
     if duration_minutes <= 0:
-        raise ValueError(f"La duree doit etre strictement positive : {duration_minutes}")
+        raise ValueError(
+            f"La duree doit etre strictement positive : {duration_minutes}"
+        )
 
     normalized_sport = rules.normalize_sport(raw_sport)
     needs_distance = rules.requires_distance(normalized_sport)
@@ -115,7 +147,8 @@ def prepare_live_activity_parameters(
     if not needs_distance:
         if distance_km is not None and distance_km > 0:
             raise ValueError(
-                f"La discipline {normalized_sport!r} ne prend pas en charge de distance metrique"
+                f"La discipline {normalized_sport!r} ne prend pas en charge "
+                "de distance metrique"
             )
         resolved_distance_m = None
     else:
@@ -219,15 +252,120 @@ def insert_unit_live_activity(
         cur.close()
 
 
+def list_employee_ids(conn: pg8000.dbapi.Connection) -> list[int]:
+    """Recupere la liste des identifiants collaborateurs pour le tirage aleatoire."""
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT employee_id FROM hr_restricted.employees_audit "
+            "ORDER BY employee_id ASC;"
+        )
+        rows = cur.fetchall()
+        if rows:
+            return [int(r[0]) for r in rows]
+
+        cur.execute(
+            "SELECT DISTINCT employee_id FROM oltp_sports.sport_activities "
+            "ORDER BY employee_id ASC;"
+        )
+        fallback = cur.fetchall()
+        if not fallback:
+            raise RuntimeError("Aucun collaborateur disponible en base")
+        return [int(r[0]) for r in fallback]
+    finally:
+        cur.close()
+
+
+def reset_live_activities(conn: pg8000.dbapi.Connection) -> int:
+    """Supprime uniquement les activites temps reel (live_event) de demonstration."""
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "DELETE FROM oltp_sports.sport_activities "
+            "WHERE ingestion_mode = 'live_event';"
+        )
+        deleted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+        conn.commit()
+        return int(deleted)
+    finally:
+        cur.close()
+
+
+def stream_live_activities(
+    conn: pg8000.dbapi.Connection,
+    rules: BusinessRules,
+    *,
+    interval_seconds: float = 3.0,
+    max_events: int | None = None,
+) -> int:
+    """Genere automatiquement des activites salaries a intervalle regulier."""
+    employee_ids = list_employee_ids(conn)
+    pause = max(0.5, interval_seconds)
+    injected = 0
+
+    logger.info(
+        "Flux automatique demarre (1 activite toutes les %.1fs, Ctrl+C pour arreter)...",
+        pause,
+    )
+    try:
+        while max_events is None or injected < max_events:
+            emp_id = random.choice(employee_ids)
+            sport = random.choice(DEMO_SPORTS)
+            duration = float(random.randint(25, 75))
+            comment = random.choice(DEMO_COMMENTS)
+
+            details = insert_unit_live_activity(
+                conn,
+                rules,
+                employee_id=emp_id,
+                sport=sport,
+                duration_minutes=duration,
+                comment=comment,
+            )
+            injected += 1
+            logger.info(
+                "[#%d] Activite injectee : id=%s | salarie=%s | sport=%s | %d min",
+                injected,
+                details["activity_id"],
+                details["employee_id"],
+                details["sport_type"],
+                int(duration),
+            )
+            if max_events is None or injected < max_events:
+                time.sleep(pause)
+    except KeyboardInterrupt:
+        logger.info("Flux interrompu proprement apres %d activite(s).", injected)
+
+    return injected
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Injection d'activites sportives temps reel (live_event) dans PostgreSQL."
+        description=(
+            "Injection d'activites sportives temps reel (live_event) dans PostgreSQL."
+        )
     )
     parser.add_argument(
         "--count",
         type=int,
         default=1,
-        help="Nombre d'activites aleatoires a generer via postgres_generator (--live-events).",
+        help="Nombre d'activites a generer (lot ou plafond avec --stream).",
+    )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Genere automatiquement des activites en continu (Ctrl+C pour arreter).",
+    )
+    parser.add_argument(
+        "--interval-seconds",
+        type=float,
+        default=3.0,
+        help="Pause en secondes entre deux activites en mode --stream (defaut: 3.0).",
+    )
+    parser.add_argument(
+        "--reset-live",
+        action="store_true",
+        help="Purge uniquement les activites live_event pour revenir a l'etat initial.",
     )
     parser.add_argument(
         "--employee-id",
@@ -239,7 +377,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--sport",
         type=str,
         default=None,
-        help="Discipline sportive (normalisee automatiquement selon business_rules.yaml).",
+        help="Discipline sportive (normalisee selon business_rules.yaml).",
     )
     parser.add_argument(
         "--duration-minutes",
@@ -251,7 +389,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--distance-km",
         type=float,
         default=None,
-        help="Distance parcourue en kilometres (uniquement pour les sports d'endurance).",
+        help="Distance parcourue en kilometres (sports d'endurance).",
     )
     parser.add_argument(
         "--comment",
@@ -267,26 +405,50 @@ def main(argv: list[str] | None = None) -> None:
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
-    args = parse_args(argv)
-    has_custom_override = any(
-        val is not None for val in (args.employee_id, args.sport, args.distance_km)
-    )
+    raw_argv = sys.argv[1:] if argv is None else argv
+    args = parse_args(raw_argv)
 
-    if args.count > 1 and not has_custom_override:
-        cmd = [
-            sys.executable,
-            "-m",
-            "src.ingestion.postgres_generator",
-            "--live-events",
-            str(args.count),
-        ]
-        subprocess.run(cmd, check=True)
-        return
+    if not args.reset_live and not args.stream:
+        has_custom_override = any(
+            val is not None
+            for val in (args.employee_id, args.sport, args.distance_km)
+        )
+        if args.count > 1 and not has_custom_override:
+            cmd = [
+                sys.executable,
+                "-m",
+                "src.ingestion.postgres_generator",
+                "--live-events",
+                str(args.count),
+            ]
+            subprocess.run(cmd, check=True)
+            return
 
     settings = EnvSettings()
     rules = load_business_rules()
     conn = pg8000.dbapi.connect(**settings.pg8000_connect_kwargs("pipeline"))
     try:
+        if args.reset_live:
+            deleted = reset_live_activities(conn)
+            logger.info(
+                "Remise a zero terminee : %d activite(s) live_event supprimee(s).",
+                deleted,
+            )
+            return
+
+        if args.stream:
+            has_explicit_count = any(
+                tok == "--count" or tok.startswith("--count=") for tok in raw_argv
+            )
+            max_events = args.count if has_explicit_count else None
+            stream_live_activities(
+                conn,
+                rules,
+                interval_seconds=args.interval_seconds,
+                max_events=max_events,
+            )
+            return
+
         summary = insert_unit_live_activity(
             conn,
             rules,

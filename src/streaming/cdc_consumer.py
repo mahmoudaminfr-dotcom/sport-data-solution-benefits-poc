@@ -266,6 +266,11 @@ def consume_activity_stream(
     run_status = "SUCCESS"
     try:
         kafka_consumer.subscribe([topic])
+        logger.info(
+            "Consommateur CDC en ecoute sur %s (groupe=%s)...",
+            topic,
+            effective_group,
+        )
         last_message_ts = time.monotonic()
 
         while not stop_requested:
@@ -320,6 +325,12 @@ def consume_activity_stream(
                 continue
 
             result = slack_notifier.notify_activity(activity)
+            logger.info(
+                "Notification Slack envoyee : activity_id=%s | sport=%s | mode=%s",
+                activity.activity_id,
+                activity.sport_type,
+                result.mode,
+            )
             seen_activity_ids.add(activity.activity_id)
             metrics.live_events_notified += 1
             metrics.notified_activity_ids.append(activity.activity_id)
