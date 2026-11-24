@@ -17,7 +17,7 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     "python-dotenv>=1.0.1",
     "pyyaml>=6.0.2",
-    "setuptools>=75.0.0,<81.0.0",
+    "setuptools>=75.0.0,<85.0.0",
     "soda-core-duckdb>=3.5.0",
     "sqlalchemy>=2.1.9",
 ]
