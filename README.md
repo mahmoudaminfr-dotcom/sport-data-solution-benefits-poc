@@ -91,3 +91,13 @@ Interfaces locales :
 - Redpanda Console : `http://localhost:8080`
 - API Debezium Connect : `http://localhost:8083/connectors`
 - Orchestrateur Kestra : `http://localhost:8085`
+
+## 8. Audit Analytique et Tableau de Bord Power BI
+
+- **Notebook d'audit :** `notebooks/sport_data_solution_audit_analytique.ipynb` (vérification de bout en bout du cloisonnement SQL, du flux CDC, des couches Delta Lake, des 22 tests Soda Core et de la sensibilité budgétaire).
+- **Rapport Power BI :** `bi/sport_data_solution_avantages.pbix` connecté en lecture seule via `sds_bi_reader` (`127.0.0.1:5433`, base `sds_platform`), documenté dans `bi/README_powerbi.md` et `bi/mesures_dax.dax`.
+
+```powershell
+# Mise à jour complète Bronze / Silver / Gold + gold_mart avant actualisation Power BI
+uv run python scripts/recompute_gold_kpis.py --refresh-bronze-silver
+```

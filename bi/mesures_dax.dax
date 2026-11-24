@@ -1,0 +1,21 @@
+// Sport Data Solution - Mesures DAX du rapport Power BI
+// Source PostgreSQL : 127.0.0.1:5433 | Base : sds_platform | Role : sds_bi_reader
+// Parametre What-If : "Simulation Taux Prime" (0,02 a 0,08, pas 0,01, defaut 0,05)
+
+Budget Prime Actuel (EUR) =
+SUM('gold_mart fact_employee_benefits'[mobility_bonus_eur])
+
+Budget Prime Simule (EUR) =
+VAR TauxSelectionne =
+    SELECTEDVALUE('Simulation Taux Prime'[Simulation Taux Prime], 5 / 100)
+RETURN
+    SUMX(
+        FILTER(
+            'gold_mart fact_employee_benefits',
+            'gold_mart fact_employee_benefits'[is_mobility_bonus_eligible] = TRUE()
+        ),
+        ROUND('gold_mart fact_employee_benefits'[annual_gross_salary_eur] * TauxSelectionne, 2)
+    )
+
+Ecart Simulation (EUR) =
+[Budget Prime Simule (EUR)] - [Budget Prime Actuel (EUR)]
