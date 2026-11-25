@@ -27,6 +27,8 @@ data/raw/*
 data/cache/*
 !data/cache/.gitkeep
 *.xlsx
+!data/samples/*.xlsx
+!data/samples/*.xlsx
 *.xls
 *.csv
 

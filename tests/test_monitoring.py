@@ -9,6 +9,7 @@ import pytest
 from pydantic import SecretStr
 
 from src.monitoring import (
+    BI_READER_MONITORING_VIEWS,
     MONITORING_VIEW_NAMES,
     LayerFreshnessMetric,
     PipelineHealthMetric,
@@ -374,7 +375,9 @@ def test_ensure_views_and_consolidate_monitoring_rbac_isolation() -> None:
     )
     assert pipe_report.overall_status == "HEALTHY"
     grants = [sql for sql, _ in fake_conn.executed_sql if sql.startswith("GRANT SELECT")]
-    assert len(grants) == len(MONITORING_VIEW_NAMES)
+    revokes = [sql for sql, _ in fake_conn.executed_sql if sql.startswith("REVOKE ALL")]
+    assert len(grants) == len(BI_READER_MONITORING_VIEWS)
+    assert len(revokes) == len(MONITORING_VIEW_NAMES) - len(BI_READER_MONITORING_VIEWS)
     inserts = [
         params
         for sql, params in fake_conn.executed_sql

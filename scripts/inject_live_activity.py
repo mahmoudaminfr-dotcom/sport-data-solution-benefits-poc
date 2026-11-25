@@ -2,7 +2,6 @@ import argparse
 import json
 import logging
 import random
-import subprocess
 import sys
 import time
 import uuid
@@ -223,7 +222,6 @@ def insert_unit_live_activity(
         duration_ms = max(0, int((finished_run - started_run).total_seconds() * 1000))
         monitoring_details = {
             "activity_id": activity_id,
-            "employee_id": emp_id,
             "sport_type": normalized_sport,
             "elapsed_seconds": elapsed_seconds,
             "distance_m": distance_m,
@@ -324,10 +322,9 @@ def stream_live_activities(
             )
             injected += 1
             logger.info(
-                "[#%d] Activite injectee : id=%s | salarie=%s | sport=%s | %d min",
+                "[#%d] Activite injectee : id=%s | sport=%s | %d min",
                 injected,
                 details["activity_id"],
-                details["employee_id"],
                 details["sport_type"],
                 int(duration),
             )
@@ -400,6 +397,47 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def inject_batch_live_activities(
+    conn: pg8000.dbapi.Connection,
+    rules: BusinessRules,
+    *,
+    count: int,
+) -> list[dict[str, Any]]:
+    """Insere directement un lot d'activites live_event dans PostgreSQL OLTP."""
+    if count < 1:
+        raise ValueError(f"Le nombre d'activites doit etre >= 1 : {count}")
+
+    employee_ids = list_employee_ids(conn)
+    chosen_ids = (
+        random.sample(employee_ids, k=count)
+        if len(employee_ids) >= count
+        else random.choices(employee_ids, k=count)
+    )
+    inserted_batch: list[dict[str, Any]] = []
+    for idx, emp_id in enumerate(chosen_ids, start=1):
+        sport = random.choice(DEMO_SPORTS)
+        duration = float(random.randint(25, 75))
+        comment = random.choice(DEMO_COMMENTS)
+        details = insert_unit_live_activity(
+            conn,
+            rules,
+            employee_id=emp_id,
+            sport=sport,
+            duration_minutes=duration,
+            comment=comment,
+        )
+        inserted_batch.append(details)
+        logger.info(
+            "[%d/%d] Activite temps reel injectee : id=%s | sport=%s | %d min",
+            idx,
+            count,
+            details["activity_id"],
+            details["sport_type"],
+            int(duration),
+        )
+    return inserted_batch
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -408,21 +446,8 @@ def main(argv: list[str] | None = None) -> None:
     raw_argv = sys.argv[1:] if argv is None else argv
     args = parse_args(raw_argv)
 
-    if not args.reset_live and not args.stream:
-        has_custom_override = any(
-            val is not None
-            for val in (args.employee_id, args.sport, args.distance_km)
-        )
-        if args.count > 1 and not has_custom_override:
-            cmd = [
-                sys.executable,
-                "-m",
-                "src.ingestion.postgres_generator",
-                "--live-events",
-                str(args.count),
-            ]
-            subprocess.run(cmd, check=True)
-            return
+    if not args.reset_live and args.count < 1:
+        raise ValueError(f"Le parametre --count doit etre >= 1 : {args.count}")
 
     settings = EnvSettings()
     rules = load_business_rules()
@@ -449,19 +474,28 @@ def main(argv: list[str] | None = None) -> None:
             )
             return
 
-        summary = insert_unit_live_activity(
-            conn,
-            rules,
-            employee_id=args.employee_id,
-            sport=args.sport,
-            duration_minutes=args.duration_minutes,
-            distance_km=args.distance_km,
-            comment=args.comment,
+        has_custom_override = any(
+            val is not None
+            for val in (args.employee_id, args.sport, args.distance_km)
         )
-        logger.info(
-            "Activite temps reel injectee : %s",
-            json.dumps(summary, ensure_ascii=False),
-        )
+        if args.count > 1 and not has_custom_override:
+            inject_batch_live_activities(conn, rules, count=args.count)
+            return
+
+        for _ in range(args.count):
+            summary = insert_unit_live_activity(
+                conn,
+                rules,
+                employee_id=args.employee_id,
+                sport=args.sport,
+                duration_minutes=args.duration_minutes,
+                distance_km=args.distance_km,
+                comment=args.comment,
+            )
+            logger.info(
+                "Activite temps reel injectee : %s",
+                json.dumps(summary, ensure_ascii=False),
+            )
     finally:
         conn.close()
 

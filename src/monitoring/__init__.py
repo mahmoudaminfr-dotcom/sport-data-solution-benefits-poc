@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import Any
 
 _PIPELINE_MONITOR_EXPORTS = {
+    "BI_READER_MONITORING_VIEWS",
     "MONITORING_VIEW_NAMES",
     "LayerFreshnessMetric",
     "PipelineAlertResult",

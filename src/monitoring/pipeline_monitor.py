@@ -40,6 +40,11 @@ MONITORING_VIEW_NAMES: tuple[str, ...] = (
     "v_quality_layer_summary",
 )
 
+BI_READER_MONITORING_VIEWS: tuple[str, ...] = (
+    "v_pipeline_health_summary",
+    "v_quality_layer_summary",
+)
+
 MONITORING_VIEWS_DDL: tuple[tuple[str, str], ...] = (
     (
         "v_pipeline_health_summary",
@@ -430,9 +435,14 @@ def ensure_monitoring_views(
     try:
         for view_name, ddl_sql in MONITORING_VIEWS_DDL:
             cur.execute(ddl_sql)
-            cur.execute(
-                f"GRANT SELECT ON ops_monitoring.{view_name} TO {bi_reader_role}"
-            )
+            if view_name in BI_READER_MONITORING_VIEWS:
+                cur.execute(
+                    f"GRANT SELECT ON ops_monitoring.{view_name} TO {bi_reader_role}"
+                )
+            else:
+                cur.execute(
+                    f"REVOKE ALL ON ops_monitoring.{view_name} FROM {bi_reader_role}"
+                )
             deployed.append(f"ops_monitoring.{view_name}")
         conn.commit()
     except Exception:
@@ -671,6 +681,54 @@ def evaluate_platform_health(
     )
 
 
+def _derive_layers_from_pipelines(
+    pipelines: list[PipelineHealthMetric],
+    *,
+    freshness_sla_hours: float,
+) -> list[LayerFreshnessMetric]:
+    sla_minutes = freshness_sla_hours * 60.0
+    grouped: dict[str, list[PipelineHealthMetric]] = {}
+    for item in pipelines:
+        grouped.setdefault(item.layer_group, []).append(item)
+
+    derived: list[LayerFreshnessMetric] = []
+    for layer_group, items in grouped.items():
+        ages = [p.freshness_age_minutes for p in items if p.freshness_age_minutes is not None]
+        max_age = max(ages) if ages else None
+        if any(p.latest_status.upper() != "SUCCESS" for p in items):
+            status = "CRITICAL"
+        elif any(p.last_success_at is None for p in items):
+            status = "DEGRADED"
+        else:
+            status = "HEALTHY"
+        durations = [p.avg_duration_ms for p in items if p.avg_duration_ms is not None]
+        avg_dur = round(sum(durations) / len(durations), 2) if durations else None
+        successes = [p.last_success_at for p in items if p.last_success_at is not None]
+        activities = [
+            p.latest_finished_at or p.latest_started_at
+            for p in items
+            if (p.latest_finished_at or p.latest_started_at) is not None
+        ]
+        derived.append(
+            LayerFreshnessMetric(
+                layer_group=layer_group,
+                pipelines_count=len(items),
+                total_runs=sum(p.total_runs for p in items),
+                succeeded_runs=sum(p.succeeded_runs for p in items),
+                failed_runs=sum(p.failed_runs for p in items),
+                layer_health_status=status,
+                last_activity_at=max(activities) if activities else None,
+                last_success_at=max(successes) if successes else None,
+                freshness_age_minutes=max_age,
+                is_fresh=_is_layer_fresh(layer_group, max_age, sla_minutes=sla_minutes),
+                latest_rows_processed=sum(p.latest_rows_processed for p in items),
+                max_anomalies_detected=max(p.latest_anomalies_detected for p in items),
+                avg_duration_ms=avg_dur,
+            )
+        )
+    return derived
+
+
 def build_platform_health_report(
     conn: Any,
     *,
@@ -684,7 +742,13 @@ def build_platform_health_report(
         else cfg.monitoring_freshness_sla_hours
     )
     pipelines = fetch_pipeline_health_metrics(conn, freshness_sla_hours=sla)
-    layers = fetch_layer_freshness_metrics(conn, freshness_sla_hours=sla)
+    try:
+        layers = fetch_layer_freshness_metrics(conn, freshness_sla_hours=sla)
+    except pg8000.dbapi.DatabaseError as exc:
+        if "42501" not in str(exc):
+            raise
+        conn.rollback()
+        layers = _derive_layers_from_pipelines(pipelines, freshness_sla_hours=sla)
     quality_layers = fetch_quality_layer_summaries(conn)
     return evaluate_platform_health(
         pipelines=pipelines,

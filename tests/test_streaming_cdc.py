@@ -474,7 +474,10 @@ def test_live_activity_parameters_and_unit_insert() -> None:
         comment="Tournoi interne",
     )
     assert inserted["activity_id"] == 9999
+    assert "employee_id" not in inserted
     assert inserted["sport_type"] == "Badminton"
     assert inserted["distance_m"] is None
     assert inserted["ingestion_mode"] == "live_event"
+    log_payload = json.loads(fake_conn.cursor_instance.executed[-1][1][5])
+    assert "employee_id" not in log_payload
     assert fake_conn.commits == 1

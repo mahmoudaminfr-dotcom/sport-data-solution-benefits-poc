@@ -7,7 +7,7 @@ Documentation du fichier `bi/sport_data_solution_avantages.pbix`.
 - **Connecteur :** Base de données PostgreSQL (mode **Importer**)
 - **Serveur :** `127.0.0.1:5433` | **Base :** `sds_platform`
 - **Compte SQL :** `sds_bi_reader` (mot de passe stocké dans `SDS_BI_READER_PASSWORD` au sein de `.env`)
-- **Sécurité :** droits `SELECT` limités aux schémas `gold_mart` et `ops_monitoring` (aucun accès aux tables nominatives `hr_restricted` ni aux transactions brutes `oltp_sports`).
+- **Sécurité :** droits `SELECT` limités au schéma `gold_mart` et aux deux vues de supervision `ops_monitoring.v_pipeline_health_summary` et `ops_monitoring.v_quality_layer_summary` (aucun accès aux tables nominatives `hr_restricted`, aux transactions brutes `oltp_sports` ni aux tables techniques `ops_monitoring.pipeline_runs` et `ops_monitoring.quality_check_results`).
 
 ## 2. Tables Importées et Modèle
 
@@ -31,9 +31,14 @@ Documentation du fichier `bi/sport_data_solution_avantages.pbix`.
 
 ## 4. Rafraîchissement des Données
 
+Le rapport Power BI fonctionne en **mode Importer** et le recalcul analytique du Lakehouse est planifié quotidiennement à **06h00** via Kestra. Alors que les notifications Slack partent en direct (`< 1 s`) dès l'insertion dans PostgreSQL, la mise à jour immédiate des visuels Power BI lors d'une démonstration s'effectue en deux commandes :
+
 ```powershell
-uv run python scripts/inject_live_activity.py --sport "Course à pied" --duration-minutes 45 --distance-km 8.5 --comment "Sortie midi"
+# 1. Injection directe de 3 nouvelles activités sportives dans PostgreSQL OLTP
+uv run python scripts/inject_live_activity.py --count 3
+
+# 2. Recalcul immédiat Bronze -> Silver -> Gold et synchronisation gold_mart
 uv run python scripts/recompute_gold_kpis.py --refresh-bronze-silver
 ```
 
-Cliquer ensuite sur **Actualiser** dans le ruban **Accueil** de Power BI Desktop.
+Cliquer ensuite sur **Actualiser** dans le ruban **Accueil** de Power BI Desktop (puis exécuter `--reset-live` suivi de `--refresh-bronze-silver` pour restaurer le compteur initial).
